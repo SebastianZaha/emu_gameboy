@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    Mem mem{};
+    Mem mem(buffer);
     CPU cpu(mem);
 
     int total_cycles = 0;
