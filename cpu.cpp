@@ -8,7 +8,7 @@ uint8_t CPU::tick() {
     fmt::print("opcode {:#04x}", opcode);
     switch (opcode) {
         case 0x00: break; // noop
-        case 0x01: cycles = op_ld_word(reg_b, reg_c); break;
+        case 0x01: cycles = op_ld_16bit(reg_b, reg_c); break;
         case 0x02: cycles = op_ld_mem_reg(reg_b, reg_c, reg_a); break;
         case 0x03: cycles = op_inc(reg_b, reg_c); break;
         case 0x04: cycles = op_inc(reg_b); break;
@@ -25,7 +25,7 @@ uint8_t CPU::tick() {
         case 0x0f: cycles = op_rrca(); break;
 
         case 0x10: cycles = 0; break;
-        case 0x11: cycles = op_ld_word(reg_d, reg_e); break;
+        case 0x11: cycles = op_ld_16bit(reg_d, reg_e); break;
         case 0x12: cycles = op_ld_mem_reg(reg_d, reg_e, reg_a); break;
         case 0x13: cycles = op_inc(reg_d, reg_e); break;
         case 0x14: cycles = op_inc(reg_d); break;
@@ -42,7 +42,7 @@ uint8_t CPU::tick() {
         case 0x1f: cycles = op_rra(); break;
 
         case 0x20: cycles = op_jr_nz(); break;
-        case 0x21: cycles = op_ld_word(reg_h, reg_l); break;
+        case 0x21: cycles = op_ld_16bit(reg_h, reg_l); break;
         case 0x22: cycles = op_ld_mem_reg_inc(reg_h, reg_l, reg_a); break;
         case 0x23: cycles = op_inc(reg_h, reg_l); break;
         case 0x24: cycles = op_inc(reg_h); break;
@@ -59,7 +59,7 @@ uint8_t CPU::tick() {
         case 0x2f: cycles = op_cpl(); break;
 
         case 0x30: cycles = op_jr_nc(); break;
-        case 0x31: cycles = op_ld_word(sp); break;
+        case 0x31: cycles = op_ld_16bit(sp); break;
         case 0x32: cycles = op_ld_mem_reg_dec(reg_h, reg_l, reg_a); break;
         case 0x33: cycles = op_inc(sp); break;
         case 0x34: cycles = op_inc_mem(reg_h, reg_l); break;
@@ -222,10 +222,13 @@ uint8_t CPU::tick() {
 
         case 0xda: cycles = op_jp_c(); break;
 
-        // case 0xe0: cycles = op_ld_
-
+        case 0xe0: cycles = op_ldh_mem_reg(); break;
         case 0xe9: cycles = op_jp_16bit(reg_h, reg_l); break;
+        case 0xea: cycles = op_ld_mem_a(); break;
 
+
+        case 0xf0: cycles = op_ldh_reg_mem(); break;
+        case 0xfa: cycles = op_ld_a_mem(); break;
 
         default:
             fmt::print(" !! unimplemented");
@@ -240,13 +243,13 @@ uint8_t CPU::read_byte_pc() {
     return b;
 }
 
-uint8_t CPU::op_ld_word(uint8_t &reg_hi, uint8_t &reg_lo) {
+uint8_t CPU::op_ld_16bit(uint8_t &reg_hi, uint8_t &reg_lo) {
     reg_lo = read_byte_pc();
     reg_hi = read_byte_pc();
     return 12;
 }
 
-uint8_t CPU::op_ld_word(uint16_t &reg) {
+uint8_t CPU::op_ld_16bit(uint16_t &reg) {
     auto lo = read_byte_pc();
     auto hi = read_byte_pc();
     reg = (hi << 8) + lo;
@@ -285,6 +288,34 @@ uint8_t CPU::op_ld_mem_sp() {
     mem.write_byte_at(address, sp_hi);
     mem.write_byte_at(address+1, static_cast<uint8_t>(sp));
     return 20;
+}
+
+uint8_t CPU::op_ld_mem_a() {
+    auto lo = read_byte_pc();
+    auto hi = read_byte_pc();
+    uint16_t address = (hi << 8) + lo;
+    mem.write_byte_at(address, reg_a);
+    return 16;
+}
+
+uint8_t CPU::op_ld_a_mem() {
+    return 0;
+}
+
+uint8_t CPU::op_ldh_mem_reg() {
+    return 0;
+}
+
+uint8_t CPU::op_ldh_reg_mem() {
+    return 0;
+}
+
+uint8_t CPU::op_ld_mem_reg(uint8_t &reg_source) {
+    auto lo = read_byte_pc();
+    auto hi = read_byte_pc();
+    uint16_t address = (hi << 8) + lo;
+    mem.write_byte_at(address, reg_a);
+    return 16;
 }
 
 uint8_t CPU::op_ld_reg_mem(uint8_t &reg_target, uint8_t &address_hi, uint8_t &address_lo) {

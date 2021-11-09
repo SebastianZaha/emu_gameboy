@@ -69,10 +69,10 @@ private:
     uint8_t op_inc(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_inc(uint8_t &reg);
     uint8_t op_dec(uint8_t &reg);
-    uint8_t op_ld_word(uint8_t &regHi, uint8_t &regLo);
+    uint8_t op_ld_16bit(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_ld_mem_reg(uint8_t &address_hi, uint8_t &address_lo, uint8_t &reg_source);
     uint8_t op_ld_byte(uint8_t &reg);
-    uint8_t op_ld_word(uint16_t &reg);
+    uint8_t op_ld_16bit(uint16_t &reg);
     uint8_t op_jp_16bit();
     uint8_t op_xor(uint8_t &reg);
     uint8_t op_xor(uint8_t &reg_hi, uint8_t &reg_lo);
@@ -153,4 +153,14 @@ private:
     uint8_t op_jp_c();
 
     uint8_t op_jp_16bit(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_ld_mem_a();
+
+    uint8_t op_ldh_mem_reg();
+
+    uint8_t op_ldh_reg_mem();
+
+    uint8_t op_ld_a_mem();
+
+    uint8_t op_ld_mem_reg(uint8_t &reg_source);
 };
