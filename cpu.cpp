@@ -21,6 +21,39 @@ uint8_t CPU::tick() {
 
         case 0x31: cycles = op_ld_word(sp); break;
 
+        case 0x80: cycles = op_add(reg_b, ADD); break;
+        case 0x81: cycles = op_add(reg_c, ADD); break;
+        case 0x82: cycles = op_add(reg_d, ADD); break;
+        case 0x83: cycles = op_add(reg_e, ADD); break;
+        case 0x84: cycles = op_add(reg_h, ADD); break;
+        case 0x85: cycles = op_add(reg_l, ADD); break;
+        case 0x86: cycles = op_add(reg_h, reg_l, ADD); break;
+        case 0x87: cycles = op_add(reg_a, ADD); break;
+        case 0x88: cycles = op_add(reg_b, ADC); break;
+        case 0x89: cycles = op_add(reg_c, ADC); break;
+        case 0x8a: cycles = op_add(reg_d, ADC); break;
+        case 0x8b: cycles = op_add(reg_e, ADC); break;
+        case 0x8c: cycles = op_add(reg_h, ADC); break;
+        case 0x8d: cycles = op_add(reg_l, ADC); break;
+        case 0x8e: cycles = op_add(reg_h, reg_l, ADC); break;
+        case 0x8f: cycles = op_add(reg_a, ADC); break;
+
+        case 0x90: cycles = op_sub(reg_b, SUB); break;
+        case 0x91: cycles = op_sub(reg_c, SUB); break;
+        case 0x92: cycles = op_sub(reg_d, SUB); break;
+        case 0x93: cycles = op_sub(reg_e, SUB); break;
+        case 0x94: cycles = op_sub(reg_h, SUB); break;
+        case 0x95: cycles = op_sub(reg_l, SUB); break;
+        case 0x96: cycles = op_sub(reg_h, reg_l, SUB); break;
+        case 0x97: cycles = op_sub(reg_a, SUB); break;
+        case 0x98: cycles = op_sub(reg_b, SBC); break;
+        case 0x99: cycles = op_sub(reg_c, SBC); break;
+        case 0x9a: cycles = op_sub(reg_d, SBC); break;
+        case 0x9b: cycles = op_sub(reg_e, SBC); break;
+        case 0x9c: cycles = op_sub(reg_h, SBC); break;
+        case 0x9d: cycles = op_sub(reg_l, SBC); break;
+        case 0x9e: cycles = op_sub(reg_h, reg_l, SBC); break;
+        case 0x9f: cycles = op_sub(reg_a, SBC); break;
 
         case 0xa0: cycles = op_and(reg_b); break;
         case 0xa1: cycles = op_and(reg_c); break;
@@ -47,14 +80,14 @@ uint8_t CPU::tick() {
         case 0xb5: cycles = op_or(reg_l); break;
         case 0xb6: cycles = op_or(reg_h, reg_l); break;
         case 0xb7: cycles = op_or(reg_a); break;
-        case 0xb8: cycles = op_cp(reg_b); break;
-        case 0xb9: cycles = op_cp(reg_c); break;
-        case 0xba: cycles = op_cp(reg_d); break;
-        case 0xbb: cycles = op_cp(reg_e); break;
-        case 0xbc: cycles = op_cp(reg_h); break;
-        case 0xbd: cycles = op_cp(reg_l); break;
-        case 0xbe: cycles = op_cp(reg_h, reg_l); break;
-        case 0xbf: cycles = op_cp(reg_a); break;
+        case 0xb8: cycles = op_sub(reg_b, CP); break;
+        case 0xb9: cycles = op_sub(reg_c, CP); break;
+        case 0xba: cycles = op_sub(reg_d, CP); break;
+        case 0xbb: cycles = op_sub(reg_e, CP); break;
+        case 0xbc: cycles = op_sub(reg_h, CP); break;
+        case 0xbd: cycles = op_sub(reg_l, CP); break;
+        case 0xbe: cycles = op_sub(reg_h, reg_l, CP); break;
+        case 0xbf: cycles = op_sub(reg_a, CP); break;
 
         case 0xc3: cycles = op_jp_word(); break;
         default:
@@ -189,23 +222,55 @@ uint8_t CPU::op_or(uint8_t &reg_hi, uint8_t &reg_lo) {
     return 8;
 }
 
-uint8_t CPU::op_cp(uint8_t &reg) {
-    int result = reg_a - reg;
-
-    flag_zero = (result == 0x00);
-    flag_bcd_subtract = true;
-    flag_bcd_half_carry = ((reg_a & 0xf) - (reg & 0xf)) & 0x10;
-    flag_carry = (result < 0);
+uint8_t CPU::op_sub(uint8_t &reg, SubMode mode) {
+    _op_sub(reg, mode);
     return 4;
 }
 
-uint8_t CPU::op_cp(uint8_t &reg_hi, uint8_t &reg_lo) {
+uint8_t CPU::op_sub(uint8_t &reg_hi, uint8_t &reg_lo, SubMode mode) {
     auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
-    int result = reg_a - val;
+    _op_sub(val, mode);
+    return 8;
+}
+
+void CPU::_op_sub(uint8_t val, SubMode mode) {
+    int carry = ((mode == SBC) && flag_carry ? 1 : 0);
+    int result = reg_a - val - carry;
 
     flag_zero = (result == 0x00);
     flag_bcd_subtract = true;
-    flag_bcd_half_carry = ((reg_a & 0xf) - (val & 0xf)) & 0x10;
+    flag_bcd_half_carry = ((reg_a & 0xf) - (val & 0xf) - carry) & 0x10;
     flag_carry = (result < 0);
+
+    switch (mode) {
+        case CP: break;
+        case SUB:
+        case SBC: reg_a = result; break;
+    }
+}
+
+uint8_t CPU::op_add(uint8_t &reg, AddMode mode) {
+    _op_add(reg, mode);
+    return 4;
+}
+
+uint8_t CPU::op_add(uint8_t &reg_hi, uint8_t &reg_lo, AddMode mode) {
+    auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
+    _op_add(val, mode);
     return 8;
+}
+
+void CPU::_op_add(uint8_t val, AddMode mode) {
+    int carry = ((mode == ADC) && flag_carry ? 1 : 0);
+    int result = reg_a + val + carry;
+
+    flag_zero = (result == 0x00);
+    flag_bcd_subtract = false;
+    flag_bcd_half_carry = ((reg_a & 0xf) + (val & 0xf) + carry) & 0x10;
+    flag_carry = (result > 0xff);
+
+    switch (mode) {
+        case ADD: break;
+        case ADC: reg_a = result; break;
+    }
 }

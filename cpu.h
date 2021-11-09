@@ -2,6 +2,9 @@
 #include <cstdint>
 #include "mem.h"
 
+enum SubMode { CP, SUB, SBC };
+enum AddMode { ADD, ADC };
+
 class CPU {
 
 public:
@@ -77,6 +80,15 @@ private:
     uint8_t op_and(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_or(uint8_t &reg);
     uint8_t op_or(uint8_t &reg_hi, uint8_t &reg_lo);
-    uint8_t op_cp(uint8_t &reg);
-    uint8_t op_cp(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_sub(uint8_t &reg, SubMode mode);
+    uint8_t op_sub(uint8_t &reg_hi, uint8_t &reg_lo, SubMode mode);
+
+    void _op_sub(uint8_t val, SubMode mode);
+
+    uint8_t op_add(uint8_t &reg, AddMode mode);
+
+    uint8_t op_add(uint8_t &reg_hi, uint8_t &reg_lo, AddMode mode);
+
+    void _op_add(uint8_t val, AddMode mode);
 };
