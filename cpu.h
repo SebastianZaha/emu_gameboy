@@ -70,10 +70,10 @@ private:
     uint8_t op_inc(uint8_t &reg);
     uint8_t op_dec(uint8_t &reg);
     uint8_t op_ld_word(uint8_t &regHi, uint8_t &regLo);
-    uint8_t op_ld_mem_reg(uint8_t &address_hi, uint8_t &address_lo, uint8_t &reg_target);
+    uint8_t op_ld_mem_reg(uint8_t &address_hi, uint8_t &address_lo, uint8_t &reg_source);
     uint8_t op_ld_byte(uint8_t &reg);
     uint8_t op_ld_word(uint16_t &reg);
-    uint8_t op_jp_word();
+    uint8_t op_jp_16bit();
     uint8_t op_xor(uint8_t &reg);
     uint8_t op_xor(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_and(uint8_t &reg);
@@ -91,4 +91,66 @@ private:
     uint8_t op_add(uint8_t &reg_hi, uint8_t &reg_lo, AddMode mode);
 
     void _op_add(uint8_t val, AddMode mode);
+
+    uint8_t op_ld_mem_reg_inc(uint8_t &address_hi, uint8_t &address_lo, uint8_t &reg_source);
+
+    uint8_t op_ld_mem_reg_dec(uint8_t &address_hi, uint8_t &address_lo, uint8_t &reg_source);
+
+    uint8_t op_dec(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_inc(uint16_t &reg);
+
+    uint8_t op_inc_mem(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_dec_mem(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_jr_z();
+    uint8_t op_jr_nz();
+    uint8_t op_jr_c();
+    uint8_t op_jr_nc();
+
+    uint8_t op_ld_mem_byte(uint8_t &address_hi, uint8_t &address_lo);
+
+    uint8_t op_ld(uint8_t &reg_target, uint8_t &reg_source);
+
+    uint8_t op_ld_reg_mem(uint8_t &reg_target, uint8_t &address_hi, uint8_t &address_lo);
+
+    uint8_t op_ld_reg_mem_inc(uint8_t &reg_target, uint8_t &address_hi, uint8_t &address_lo);
+
+    uint8_t op_ld_reg_mem_dec(uint8_t &reg_target, uint8_t &address_hi, uint8_t &address_lo);
+
+    uint8_t op_rlca();
+
+    uint8_t op_rla();
+
+    uint8_t op_rrca();
+
+    uint8_t op_rra();
+
+    uint8_t op_ld_mem_sp();
+
+    uint8_t op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint8_t &reg2_hi, uint8_t &reg2_lo);
+
+    uint8_t op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint16_t &reg2);
+
+    uint8_t op_dec(uint16_t &reg);
+
+    uint8_t op_jr();
+
+    uint8_t op_daa();
+    uint8_t op_scf();
+
+    uint8_t op_cpl();
+
+    uint8_t op_ccf();
+
+    uint8_t op_jp_nz();
+
+    uint8_t op_jp_z();
+
+    uint8_t op_jp_nc();
+
+    uint8_t op_jp_c();
+
+    uint8_t op_jp_16bit(uint8_t &reg_hi, uint8_t &reg_lo);
 };

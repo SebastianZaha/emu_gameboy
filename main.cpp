@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <fmt/core.h>
 #include "constants.h"
 #include "cpu.h"
 #include "mem.h"
@@ -46,12 +47,19 @@ int main(int argc, char* argv[]) {
     Mem mem(buffer);
     CPU cpu(mem);
 
+    /*
+    uint8_t a = 0;
+    uint8_t b = 1;
+    fmt::print("{:#b}", static_cast<uint8_t>(a - b));
+*/
+
     int total_cycles = 0;
 
     for (int i = 0; i < 20; ++i) {
         total_cycles += cpu.tick();
+        // check for 0
     }
-    std::cout << "ran for " << total_cycles << " cycles" << std::endl;
+    fmt::print("ran for {} cycles\n", total_cycles);
 
 
     return 0;

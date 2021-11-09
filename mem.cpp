@@ -17,5 +17,5 @@ uint8_t Mem::read_byte_at(uint16_t address) {
 }
 
 void Mem::write_byte_at(uint16_t address, uint8_t value) {
-    std::cout << "[unimplemented] write at address" << address << value << static_cast<int>(value) << std::endl;
+    fmt::print("[unimplemented] write at address {:#06x} value {}\n", address, value);
 }
