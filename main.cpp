@@ -55,12 +55,14 @@ int main(int argc, char* argv[]) {
 
     int total_cycles = 0;
 
-    for (int i = 0; i < 20; ++i) {
-        total_cycles += cpu.tick();
-        // check for 0
+    for (int i = 0; i < 1000; ++i) {
+        auto cycles = cpu.tick();
+        if (cycles == 0) {
+            fmt::print("STOP. ran for {} cycles\n", total_cycles);
+        }
+        total_cycles += cycles;
     }
-    fmt::print("ran for {} cycles\n", total_cycles);
-
+    fmt::print("LIMITED ran for {} cycles\n", total_cycles);
 
     return 0;
 }

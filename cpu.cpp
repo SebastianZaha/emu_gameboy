@@ -237,7 +237,7 @@ uint8_t CPU::tick() {
         case 0xd6: cycles = op_sub_d8(SubMode::SUB); break;
         case 0xd7: cycles = op_rst(0x0010);
         case 0xd8: cycles = op_ret_c(); break;
-        // FIXME: reti
+        case 0xd9: cycles = op_reti(); break;
         case 0xda: cycles = op_jp_c(); break;
         // empty
         case 0xdc: cycles = op_call_c(); break;
@@ -265,7 +265,7 @@ uint8_t CPU::tick() {
         case 0xf0: cycles = op_ldh_reg_mem(); break;
         case 0xf1: cycles = op_pop_af(); break;
         case 0xf2: cycles = op_ld_a_mem_c(); break;
-        // FIXME: di
+        case 0xf3: cycles = op_di(); break;
         // empty
         case 0xf5: cycles = op_push_af(); break;
         case 0xf6: cycles = op_or(); break;
@@ -273,7 +273,7 @@ uint8_t CPU::tick() {
         case 0xf8: cycles = op_ld_hl_sp_plus_s8(); break;
         case 0xf9: cycles = op_ld(sp, reg_h, reg_l); break;
         case 0xfa: cycles = op_ld_a_mem(); break;
-        // FIXME: ei
+        case 0xfb: cycles = op_ei(); break;
         // empty
         // empty
         case 0xfe: cycles = op_sub_d8(SubMode::CP); break;
@@ -462,9 +462,7 @@ uint8_t CPU::op_inc(uint8_t &reg) {
 
     flag_0100_bcd_subtract = false;
     flag_0010_bcd_half_carry = (reg & 0x0F) == 0x00;
-    if (reg == 0x00) {
-        flag_0001_carry = true;
-    }
+    flag_1000_zero = (reg == 0x00);
     return 4;
 }
 
@@ -484,12 +482,9 @@ uint8_t CPU::op_dec(uint16_t &reg) {
 
 uint8_t CPU::op_dec(uint8_t &reg) {
     reg -= 1;
-
     flag_0100_bcd_subtract = true;
     flag_0010_bcd_half_carry = (reg & 0x0F) == 0x00;
-    if (reg == 0xFF) {
-        flag_0001_carry = true;
-    }
+    flag_1000_zero = (reg == 0x00);
     return 4;
 }
 
@@ -965,4 +960,20 @@ uint8_t CPU::op_call_c() {
         return 6;
     }
     return 3;
+}
+
+uint8_t CPU::op_ei() {
+    ime = true;
+    return 4;
+}
+
+uint8_t CPU::op_di() {
+    ime = false;
+    return 4;
+}
+
+uint8_t CPU::op_reti() {
+    ime = true;
+    op_ret();
+    return 16;
 }

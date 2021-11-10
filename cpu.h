@@ -64,6 +64,8 @@ private:
     uint16_t sp = 0xFFFE;   // stack pointer
     uint16_t pc = 0x0100;   // program counter / pointer
 
+    bool ime = false;
+
     uint8_t op_inc(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_inc(uint8_t &reg);
     uint8_t op_dec(uint8_t &reg);
@@ -218,4 +220,10 @@ private:
     uint8_t op_rst(uint16_t addr);
 
     uint8_t op_add_sp_s8();
+
+    uint8_t op_ei();
+
+    uint8_t op_di();
+
+    uint8_t op_reti();
 };
