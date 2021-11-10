@@ -211,42 +211,73 @@ uint8_t CPU::tick() {
         case 0xbe: cycles = op_sub(reg_h, reg_l, CP); break;
         case 0xbf: cycles = op_sub(reg_a, CP); break;
 
-
+        case 0xc0: cycles = op_ret_nz(); break;
         case 0xc1: cycles = op_pop(reg_b, reg_c); break;
         case 0xc2: cycles = op_jp_nz(); break;
         case 0xc3: cycles = op_jp_16bit(); break;
-
+        case 0xc4: cycles = op_call_nz(); break;
         case 0xc5: cycles = op_push(reg_b, reg_c); break;
-
+        case 0xc6: cycles = op_add_d8(AddMode::ADD);
+        case 0xc7: cycles = op_rst(0x0000);
+        case 0xc8: cycles = op_ret_z(); break;
+        case 0xc9: cycles = op_ret(); break;
         case 0xca: cycles = op_jp_z(); break;
+        // FIXME: cb prefix
+        case 0xcc: cycles = op_call_z(); break;
+        case 0xcd: cycles = op_call(); break;
+        case 0xce: cycles = op_add_d8(AddMode::ADC);
+        case 0xcf: cycles = op_rst(0x0008);
 
+        case 0xd0: cycles = op_ret_nc(); break;
         case 0xd1: cycles = op_pop(reg_d, reg_e); break;
         case 0xd2: cycles = op_jp_nc(); break;
-
+        // empty
+        case 0xd4: cycles = op_call_nc(); break;
         case 0xd5: cycles = op_push(reg_d, reg_e); break;
-
+        case 0xd6: cycles = op_sub_d8(SubMode::SUB); break;
+        case 0xd7: cycles = op_rst(0x0010);
+        case 0xd8: cycles = op_ret_c(); break;
+        // FIXME: reti
         case 0xda: cycles = op_jp_c(); break;
+        // empty
+        case 0xdc: cycles = op_call_c(); break;
+        // empty
+        case 0xde: cycles = op_sub_d8(SubMode::SBC); break;
+        case 0xdf: cycles = op_rst(0x0018);
 
         case 0xe0: cycles = op_ldh_mem_reg(); break;
         case 0xe1: cycles = op_pop(reg_h, reg_l); break;
         case 0xe2: cycles = op_ld_mem_c_a(); break;
-
+        // empty
+        // empty
         case 0xe5: cycles = op_push(reg_h, reg_l); break;
-
+        case 0xe6: cycles = op_and(); break;
+        case 0xe7: cycles = op_rst(0x0020);
+        case 0xe8: cycles = op_add_sp_s8();
         case 0xe9: cycles = op_jp_16bit(reg_h, reg_l); break;
         case 0xea: cycles = op_ld_mem_a(); break;
-
+        // empty
+        // empty
+        // empty
+        case 0xee: cycles = op_xor(); break;
+        case 0xef: cycles = op_rst(0x0028);
 
         case 0xf0: cycles = op_ldh_reg_mem(); break;
         case 0xf1: cycles = op_pop_af(); break;
         case 0xf2: cycles = op_ld_a_mem_c(); break;
-
+        // FIXME: di
+        // empty
         case 0xf5: cycles = op_push_af(); break;
-
+        case 0xf6: cycles = op_or(); break;
+        case 0xf7: cycles = op_rst(0x0030);
         case 0xf8: cycles = op_ld_hl_sp_plus_s8(); break;
         case 0xf9: cycles = op_ld(sp, reg_h, reg_l); break;
-
         case 0xfa: cycles = op_ld_a_mem(); break;
+        // FIXME: ei
+        // empty
+        // empty
+        case 0xfe: cycles = op_sub_d8(SubMode::CP); break;
+        case 0xff: cycles = op_rst(0x0038);
 
         default:
             fmt::print(" !! unimplemented");
@@ -562,6 +593,12 @@ uint8_t CPU::op_xor(uint8_t &reg_hi, uint8_t &reg_lo) {
     return 8;
 }
 
+uint8_t CPU::op_xor() {
+    auto val = read_byte_and_inc(pc);
+    op_xor(val);
+    return 8;
+}
+
 uint8_t CPU::op_and(uint8_t &reg) {
     reg_a = reg and reg_a;
     flag_1000_zero = (reg_a == 0x00);
@@ -569,6 +606,12 @@ uint8_t CPU::op_and(uint8_t &reg) {
     flag_0010_bcd_half_carry = true;
     flag_0001_carry = false;
     return 4;
+}
+
+uint8_t CPU::op_and() {
+    auto val = read_byte_and_inc(pc);
+    op_and(val);
+    return 8;
 }
 
 uint8_t CPU::op_and(uint8_t &reg_hi, uint8_t &reg_lo) {
@@ -600,9 +643,21 @@ uint8_t CPU::op_or(uint8_t &reg_hi, uint8_t &reg_lo) {
     return 8;
 }
 
+uint8_t CPU::op_or() {
+    auto val = read_byte_and_inc(pc);
+    op_or(val);
+    return 8;
+}
+
 uint8_t CPU::op_sub(uint8_t &reg, SubMode mode) {
     _op_sub(reg, mode);
     return 4;
+}
+
+uint8_t CPU::op_sub_d8(SubMode mode) {
+    auto d8 = read_byte_and_inc(pc);
+    _op_sub(d8, mode);
+    return 8;
 }
 
 uint8_t CPU::op_sub(uint8_t &reg_hi, uint8_t &reg_lo, SubMode mode) {
@@ -632,6 +687,12 @@ uint8_t CPU::op_add(uint8_t &reg, AddMode mode) {
     return 4;
 }
 
+uint8_t CPU::op_add_d8(AddMode mode) {
+    auto d8 = read_byte_and_inc(pc);
+    _op_add(d8, mode);
+    return 8;
+}
+
 uint8_t CPU::op_add(uint8_t &reg_hi, uint8_t &reg_lo, AddMode mode) {
     auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
     _op_add(val, mode);
@@ -650,6 +711,20 @@ uint8_t CPU::op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint8_t &reg2_hi, 
     reg1_hi = sum_hi;
 
     return 8;
+}
+
+uint8_t CPU::op_add_sp_s8() {
+    flag_1000_zero = false;
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false; // FIXME: half carry ?
+
+    auto s8 = static_cast<int8_t>(read_byte_and_inc(pc));
+    int result = sp + s8;
+    if (result > 0xffff) {
+        flag_0001_carry = true;
+    }
+    sp = result;
+    return 16;
 }
 
 uint8_t CPU::op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint16_t &reg2) {
@@ -767,6 +842,13 @@ uint8_t CPU::op_pop(uint8_t &reg_hi, uint8_t &reg_lo) {
     return 12;
 }
 
+uint8_t CPU::op_pop(uint16_t &reg) {
+    auto reg_lo = read_byte_and_inc(sp);
+    auto reg_hi = read_byte_and_inc(sp);
+    reg = (reg_hi << 8) + reg_lo;
+    return 12;
+}
+
 uint8_t CPU::op_pop_af() {
     reg_a = read_byte_and_inc(sp);
     auto flags = read_byte_and_inc(sp);
@@ -783,6 +865,12 @@ uint8_t CPU::op_push(uint8_t &reg_hi, uint8_t &reg_lo) {
     return 16;
 }
 
+uint8_t CPU::op_push(uint16_t &reg) {
+    write_byte_and_dec(sp, reg >> 8);
+    write_byte_and_dec(sp, reg);
+    return 16;
+}
+
 uint8_t CPU::op_push_af() {
     uint8_t flags =
             (flag_1000_zero ? 0b1000 : 0) |
@@ -795,3 +883,86 @@ uint8_t CPU::op_push_af() {
     return 16;
 }
 
+uint8_t CPU::op_call() {
+    auto addr_lo = read_byte_and_inc(pc);
+    auto addr_hi = read_byte_and_inc(pc);
+
+    op_push(pc);
+    pc = (addr_hi << 8) + addr_lo;
+    return 24;
+}
+
+uint8_t CPU::op_rst(uint16_t addr) {
+    op_push(pc);
+    pc = addr;
+    return 16;
+}
+
+uint8_t CPU::op_ret() {
+    op_pop(pc);
+    return 16;
+}
+
+uint8_t CPU::op_ret_nz() {
+    if (!flag_1000_zero) {
+        op_ret();
+        return 5;
+    }
+    return 2;
+}
+
+uint8_t CPU::op_call_nz() {
+    if (!flag_1000_zero) {
+        op_call();
+        return 6;
+    }
+    return 3;
+}
+
+uint8_t CPU::op_ret_z() {
+    if (flag_1000_zero) {
+        op_ret();
+        return 5;
+    }
+    return 2;
+}
+
+uint8_t CPU::op_call_z() {
+    if (flag_1000_zero) {
+        op_call();
+        return 6;
+    }
+    return 3;
+}
+
+uint8_t CPU::op_ret_nc() {
+    if (!flag_0001_carry) {
+        op_ret();
+        return 5;
+    }
+    return 2;
+}
+
+uint8_t CPU::op_call_nc() {
+    if (!flag_0001_carry) {
+        op_call();
+        return 6;
+    }
+    return 3;
+}
+
+uint8_t CPU::op_ret_c() {
+    if (flag_0001_carry) {
+        op_ret();
+        return 5;
+    }
+    return 2;
+}
+
+uint8_t CPU::op_call_c() {
+    if (flag_0001_carry) {
+        op_call();
+        return 6;
+    }
+    return 3;
+}

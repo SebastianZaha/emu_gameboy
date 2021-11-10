@@ -180,4 +180,42 @@ private:
     uint8_t op_push(uint8_t &reg_hi, uint8_t &reg_lo);
 
     uint8_t op_push_af();
+
+    uint8_t op_call();
+
+    uint8_t op_push(uint16_t &reg);
+
+    uint8_t op_ret();
+
+    uint8_t op_pop(uint16_t &reg);
+
+    uint8_t op_ret_nz();
+
+    uint8_t op_call_nz();
+
+    uint8_t op_ret_z();
+
+    uint8_t op_call_z();
+
+    uint8_t op_ret_nc();
+
+    uint8_t op_call_nc();
+
+    uint8_t op_ret_c();
+
+    uint8_t op_call_c();
+
+    uint8_t op_add_d8(AddMode mode);
+
+    uint8_t op_sub_d8(SubMode mode);
+
+    uint8_t op_and();
+
+    uint8_t op_or();
+
+    uint8_t op_xor();
+
+    uint8_t op_rst(uint16_t addr);
+
+    uint8_t op_add_sp_s8();
 };
