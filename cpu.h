@@ -19,10 +19,10 @@ private:
 
     uint8_t reg_a = 0x01; // accumulator
 
-    bool flag_zero = true;
-    bool flag_bcd_subtract = false;
-    bool flag_bcd_half_carry = true;
-    bool flag_carry = true;
+    bool flag_1000_zero = true;
+    bool flag_0100_bcd_subtract = false;
+    bool flag_0010_bcd_half_carry = true;
+    bool flag_0001_carry = true;
 
     /* The Flag Register (lower 8bit of AF register)
         Bit  Name  Set Clr  Expl.
@@ -63,8 +63,6 @@ private:
 
     uint16_t sp = 0xFFFE;   // stack pointer
     uint16_t pc = 0x0100;   // program counter / pointer
-
-    uint8_t read_byte_pc();
 
     uint8_t op_inc(uint8_t &reg_hi, uint8_t &reg_lo);
     uint8_t op_inc(uint8_t &reg);
@@ -163,4 +161,23 @@ private:
     uint8_t op_ld_a_mem();
 
     uint8_t op_ld_mem_reg(uint8_t &reg_source);
+
+    uint8_t op_ld_mem_c_a();
+
+    uint8_t op_ld_a_mem_c();
+
+    uint8_t op_ld_hl_sp_plus_s8();
+
+    uint8_t op_pop(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_pop_af();
+
+    uint8_t op_ld(uint16_t reg_target, uint8_t &reg_source_hi, uint8_t &reg_source_lo);
+
+    uint8_t read_byte_and_inc(uint16_t &reg);
+    void write_byte_and_dec(uint16_t &reg, uint8_t value);
+
+    uint8_t op_push(uint8_t &reg_hi, uint8_t &reg_lo);
+
+    uint8_t op_push_af();
 };

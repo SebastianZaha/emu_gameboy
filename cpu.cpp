@@ -2,7 +2,7 @@
 #include "fmt/core.h"
 
 uint8_t CPU::tick() {
-    auto opcode = read_byte_pc();
+    auto opcode = read_byte_and_inc(pc);
     uint8_t cycles = 4; // default is noop
 
     fmt::print("opcode {:#04x}", opcode);
@@ -212,22 +212,40 @@ uint8_t CPU::tick() {
         case 0xbf: cycles = op_sub(reg_a, CP); break;
 
 
-
+        case 0xc1: cycles = op_pop(reg_b, reg_c); break;
         case 0xc2: cycles = op_jp_nz(); break;
         case 0xc3: cycles = op_jp_16bit(); break;
 
+        case 0xc5: cycles = op_push(reg_b, reg_c); break;
+
         case 0xca: cycles = op_jp_z(); break;
 
+        case 0xd1: cycles = op_pop(reg_d, reg_e); break;
         case 0xd2: cycles = op_jp_nc(); break;
+
+        case 0xd5: cycles = op_push(reg_d, reg_e); break;
 
         case 0xda: cycles = op_jp_c(); break;
 
         case 0xe0: cycles = op_ldh_mem_reg(); break;
+        case 0xe1: cycles = op_pop(reg_h, reg_l); break;
+        case 0xe2: cycles = op_ld_mem_c_a(); break;
+
+        case 0xe5: cycles = op_push(reg_h, reg_l); break;
+
         case 0xe9: cycles = op_jp_16bit(reg_h, reg_l); break;
         case 0xea: cycles = op_ld_mem_a(); break;
 
 
         case 0xf0: cycles = op_ldh_reg_mem(); break;
+        case 0xf1: cycles = op_pop_af(); break;
+        case 0xf2: cycles = op_ld_a_mem_c(); break;
+
+        case 0xf5: cycles = op_push_af(); break;
+
+        case 0xf8: cycles = op_ld_hl_sp_plus_s8(); break;
+        case 0xf9: cycles = op_ld(sp, reg_h, reg_l); break;
+
         case 0xfa: cycles = op_ld_a_mem(); break;
 
         default:
@@ -237,28 +255,33 @@ uint8_t CPU::tick() {
     return cycles;
 }
 
-uint8_t CPU::read_byte_pc() {
-    auto b = mem.read_byte_at(pc);
-    pc += 1;
+uint8_t CPU::read_byte_and_inc(uint16_t &reg) {
+    auto b = mem.read_byte_at(reg);
+    reg += 1;
     return b;
 }
 
+void CPU::write_byte_and_dec(uint16_t &reg, uint8_t value) {
+    mem.write_byte_at(reg, value);
+    reg -= 1;
+}
+
 uint8_t CPU::op_ld_16bit(uint8_t &reg_hi, uint8_t &reg_lo) {
-    reg_lo = read_byte_pc();
-    reg_hi = read_byte_pc();
+    reg_lo = read_byte_and_inc(pc);
+    reg_hi = read_byte_and_inc(pc);
     return 12;
 }
 
 uint8_t CPU::op_ld_16bit(uint16_t &reg) {
-    auto lo = read_byte_pc();
-    auto hi = read_byte_pc();
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
     reg = (hi << 8) + lo;
     return 12;
 }
 
 
 uint8_t CPU::op_ld_byte(uint8_t &reg) {
-    reg = read_byte_pc();
+    reg = read_byte_and_inc(pc);
     return 8;
 }
 
@@ -267,9 +290,14 @@ uint8_t CPU::op_ld(uint8_t &reg_target, uint8_t &reg_source) {
     return 4;
 }
 
+uint8_t CPU::op_ld(uint16_t reg_target, uint8_t &reg_source_hi, uint8_t &reg_source_lo) {
+    reg_target = (reg_source_hi << 8) + reg_source_lo;
+    return 8;
+}
+
 uint8_t CPU::op_ld_mem_byte(uint8_t &address_hi, uint8_t &address_lo) {
     uint16_t address = (address_hi << 8) + address_lo;
-    mem.write_byte_at(address, read_byte_pc());
+    mem.write_byte_at(address, read_byte_and_inc(pc));
     return 12;
 }
 
@@ -280,8 +308,8 @@ uint8_t CPU::op_ld_mem_reg(uint8_t &address_hi, uint8_t &address_lo, uint8_t &re
 }
 
 uint8_t CPU::op_ld_mem_sp() {
-    auto lo = read_byte_pc();
-    auto hi = read_byte_pc();
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
     uint16_t address = (hi << 8) + lo;
 
     auto sp_hi = static_cast<uint8_t>(sp >> 8);
@@ -291,28 +319,46 @@ uint8_t CPU::op_ld_mem_sp() {
 }
 
 uint8_t CPU::op_ld_mem_a() {
-    auto lo = read_byte_pc();
-    auto hi = read_byte_pc();
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
     uint16_t address = (hi << 8) + lo;
     mem.write_byte_at(address, reg_a);
     return 16;
 }
 
 uint8_t CPU::op_ld_a_mem() {
-    return 0;
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
+    uint16_t address = (hi << 8) + lo;
+    reg_a = mem.read_byte_at(address);
+    return 16;
 }
 
 uint8_t CPU::op_ldh_mem_reg() {
-    return 0;
+    auto lo = read_byte_and_inc(pc);
+    mem.write_byte_at(0xff00 + lo, reg_a);
+    return 12;
 }
 
 uint8_t CPU::op_ldh_reg_mem() {
-    return 0;
+    auto lo = read_byte_and_inc(pc);
+    reg_a = mem.read_byte_at(0xff00 + lo);
+    return 12;
+}
+
+uint8_t CPU::op_ld_mem_c_a() {
+    mem.write_byte_at(0xff00 + reg_c, reg_a);
+    return 8;
+}
+
+uint8_t CPU::op_ld_a_mem_c() {
+    reg_a = mem.read_byte_at(0xff00 + reg_c);
+    return 8;
 }
 
 uint8_t CPU::op_ld_mem_reg(uint8_t &reg_source) {
-    auto lo = read_byte_pc();
-    auto hi = read_byte_pc();
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
     uint16_t address = (hi << 8) + lo;
     mem.write_byte_at(address, reg_a);
     return 16;
@@ -365,10 +411,10 @@ uint8_t CPU::op_inc_mem(uint8_t &reg_hi, uint8_t &reg_lo) {
     auto val = mem.read_byte_at(addr);
     val += 1;
 
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = (val & 0x0F) == 0x00;
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = (val & 0x0F) == 0x00;
     if (val == 0x00) {
-        flag_carry = true;
+        flag_0001_carry = true;
     }
 
     mem.write_byte_at(addr, val);
@@ -383,10 +429,10 @@ uint8_t CPU::op_inc(uint16_t &reg) {
 uint8_t CPU::op_inc(uint8_t &reg) {
     reg += 1;
 
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = (reg & 0x0F) == 0x00;
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = (reg & 0x0F) == 0x00;
     if (reg == 0x00) {
-        flag_carry = true;
+        flag_0001_carry = true;
     }
     return 4;
 }
@@ -408,10 +454,10 @@ uint8_t CPU::op_dec(uint16_t &reg) {
 uint8_t CPU::op_dec(uint8_t &reg) {
     reg -= 1;
 
-    flag_bcd_subtract = true;
-    flag_bcd_half_carry = (reg & 0x0F) == 0x00;
+    flag_0100_bcd_subtract = true;
+    flag_0010_bcd_half_carry = (reg & 0x0F) == 0x00;
     if (reg == 0xFF) {
-        flag_carry = true;
+        flag_0001_carry = true;
     }
     return 4;
 }
@@ -421,10 +467,10 @@ uint8_t CPU::op_dec_mem(uint8_t &reg_hi, uint8_t &reg_lo) {
     auto val = mem.read_byte_at(addr);
     val -= 1;
 
-    flag_bcd_subtract = true;
-    flag_bcd_half_carry = (val & 0x0F) == 0x00;
+    flag_0100_bcd_subtract = true;
+    flag_0010_bcd_half_carry = (val & 0x0F) == 0x00;
     if (val == 0xff) {
-        flag_carry = true;
+        flag_0001_carry = true;
     }
 
     mem.write_byte_at(addr, val);
@@ -432,8 +478,8 @@ uint8_t CPU::op_dec_mem(uint8_t &reg_hi, uint8_t &reg_lo) {
 }
 
 uint8_t CPU::op_jp_16bit() {
-    auto lo = read_byte_pc();
-    auto hi = read_byte_pc();
+    auto lo = read_byte_and_inc(pc);
+    auto hi = read_byte_and_inc(pc);
     pc = (hi << 8) + lo;
     return 16;
 }
@@ -444,113 +490,113 @@ uint8_t CPU::op_jp_16bit(uint8_t &reg_hi, uint8_t &reg_lo) {
 }
 
 uint8_t CPU::op_jp_nz() {
-    return flag_zero ? 12 : op_jp_16bit();
+    return flag_1000_zero ? 12 : op_jp_16bit();
 }
 
 uint8_t CPU::op_jp_z() {
-    return flag_zero ? op_jp_16bit() : 12;
+    return flag_1000_zero ? op_jp_16bit() : 12;
 }
 
 uint8_t CPU::op_jp_nc() {
-    return flag_carry ? 12 : op_jp_16bit();
+    return flag_0001_carry ? 12 : op_jp_16bit();
 }
 
 uint8_t CPU::op_jp_c() {
-    return flag_carry ? op_jp_16bit() : 12;
+    return flag_0001_carry ? op_jp_16bit() : 12;
 }
 
-uint8_t  CPU::op_jr_z() {
-    if (flag_zero) {
-        pc += static_cast<int8_t>(read_byte_pc());
+uint8_t CPU::op_jr_z() {
+    if (flag_1000_zero) {
+        pc += static_cast<int8_t>(read_byte_and_inc(pc));
         return 12;
     }
     return 8;
 }
 
-uint8_t  CPU::op_jr_c() {
-    if (flag_carry) {
-        pc += static_cast<int8_t>(read_byte_pc());
+uint8_t CPU::op_jr_c() {
+    if (flag_0001_carry) {
+        pc += static_cast<int8_t>(read_byte_and_inc(pc));
         return 12;
     }
     return 8;
 }
 
-uint8_t  CPU::op_jr_nz() {
-    if (!flag_zero) {
-        pc += static_cast<int8_t>(read_byte_pc());
+uint8_t CPU::op_jr_nz() {
+    if (!flag_1000_zero) {
+        pc += static_cast<int8_t>(read_byte_and_inc(pc));
         return 12;
     }
     return 8;
 }
 
-uint8_t  CPU::op_jr_nc() {
-    if (!flag_carry) {
-        pc += static_cast<int8_t>(read_byte_pc());
+uint8_t CPU::op_jr_nc() {
+    if (!flag_0001_carry) {
+        pc += static_cast<int8_t>(read_byte_and_inc(pc));
         return 12;
     }
     return 8;
 }
 
 uint8_t CPU::op_jr() {
-    auto delta = static_cast<int8_t>(read_byte_pc());
+    auto delta = static_cast<int8_t>(read_byte_and_inc(pc));
     pc += delta;
     return 12;
 }
 
 uint8_t CPU::op_xor(uint8_t &reg) {
     reg_a = reg xor reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = false;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false;
+    flag_0001_carry = false;
     return 4;
 }
 
 uint8_t CPU::op_xor(uint8_t &reg_hi, uint8_t &reg_lo) {
     auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
     reg_a = val xor reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = false;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false;
+    flag_0001_carry = false;
     return 8;
 }
 
 uint8_t CPU::op_and(uint8_t &reg) {
     reg_a = reg and reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = true;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = true;
+    flag_0001_carry = false;
     return 4;
 }
 
 uint8_t CPU::op_and(uint8_t &reg_hi, uint8_t &reg_lo) {
     auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
     reg_a = val and reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = true;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = true;
+    flag_0001_carry = false;
     return 8;
 }
 
 uint8_t CPU::op_or(uint8_t &reg) {
     reg_a = reg or reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = false;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false;
+    flag_0001_carry = false;
     return 4;
 }
 
 uint8_t CPU::op_or(uint8_t &reg_hi, uint8_t &reg_lo) {
     auto val = mem.read_byte_at((reg_hi << 8) + reg_lo);
     reg_a = val or reg_a;
-    flag_zero = (reg_a == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = false;
-    flag_carry = false;
+    flag_1000_zero = (reg_a == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false;
+    flag_0001_carry = false;
     return 8;
 }
 
@@ -566,13 +612,13 @@ uint8_t CPU::op_sub(uint8_t &reg_hi, uint8_t &reg_lo, SubMode mode) {
 }
 
 void CPU::_op_sub(uint8_t val, SubMode mode) {
-    int carry = ((mode == SBC) && flag_carry ? 1 : 0);
+    int carry = ((mode == SBC) && flag_0001_carry ? 1 : 0);
     int result = reg_a - val - carry;
 
-    flag_zero = (result == 0x00);
-    flag_bcd_subtract = true;
-    flag_bcd_half_carry = ((reg_a & 0xf) - (val & 0xf) - carry) & 0x10;
-    flag_carry = (result < 0);
+    flag_1000_zero = (result == 0x00);
+    flag_0100_bcd_subtract = true;
+    flag_0010_bcd_half_carry = ((reg_a & 0xf) - (val & 0xf) - carry) & 0x10;
+    flag_0001_carry = (result < 0);
 
     switch (mode) {
         case CP: break;
@@ -594,11 +640,11 @@ uint8_t CPU::op_add(uint8_t &reg_hi, uint8_t &reg_lo, AddMode mode) {
 
 uint8_t CPU::op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint8_t &reg2_hi, uint8_t &reg2_lo) {
     uint16_t sum_lo = reg1_lo + reg2_lo;
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = (sum_lo > 0xff);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = (sum_lo > 0xff);
 
-    uint16_t sum_hi = reg1_hi + reg2_hi + (flag_bcd_half_carry ? 1 : 0);
-    flag_carry = (sum_hi > 0xff);
+    uint16_t sum_hi = reg1_hi + reg2_hi + (flag_0010_bcd_half_carry ? 1 : 0);
+    flag_0001_carry = (sum_hi > 0xff);
 
     reg1_lo = sum_lo;
     reg1_hi = sum_hi;
@@ -614,13 +660,13 @@ uint8_t CPU::op_add_16bit(uint8_t &reg1_hi, uint8_t &reg1_lo, uint16_t &reg2) {
 
 
 void CPU::_op_add(uint8_t val, AddMode mode) {
-    int carry = ((mode == ADC) && flag_carry ? 1 : 0);
+    int carry = ((mode == ADC) && flag_0001_carry ? 1 : 0);
     int result = reg_a + val + carry;
 
-    flag_zero = (result == 0x00);
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = ((reg_a & 0xf) + (val & 0xf) + carry) & 0x10;
-    flag_carry = (result > 0xff);
+    flag_1000_zero = (result == 0x00);
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = ((reg_a & 0xf) + (val & 0xf) + carry) & 0x10;
+    flag_0001_carry = (result > 0xff);
 
     switch (mode) {
         case ADD: break;
@@ -629,37 +675,37 @@ void CPU::_op_add(uint8_t val, AddMode mode) {
 }
 
 uint8_t CPU::op_rlca() {
-    flag_carry = (reg_a & 0b1000'0000) > 0;
+    flag_0001_carry = (reg_a & 0b1000'0000) > 0;
     reg_a = reg_a << 1;
-    if (flag_carry) reg_a += 1;
+    if (flag_0001_carry) reg_a += 1;
     return 4;
 }
 
 uint8_t CPU::op_rla() {
-    auto old_carry = flag_carry;
-    flag_carry = (reg_a & 0b1000'0000) > 0;
+    auto old_carry = flag_0001_carry;
+    flag_0001_carry = (reg_a & 0b1000'0000) > 0;
     reg_a = reg_a << 1;
     if (old_carry) reg_a += 1;
     return 4;
 }
 
 uint8_t CPU::op_rrca() {
-    flag_carry = (reg_a & 1) > 0;
+    flag_0001_carry = (reg_a & 1) > 0;
     reg_a = reg_a >> 1;
-    if (flag_carry) reg_a += 0b1000'0000;
+    if (flag_0001_carry) reg_a += 0b1000'0000;
     return 4;
 }
 
 uint8_t CPU::op_rra() {
-    auto old_carry = flag_carry;
-    flag_carry = (reg_a & 1) > 0;
+    auto old_carry = flag_0001_carry;
+    flag_0001_carry = (reg_a & 1) > 0;
     reg_a = reg_a >> 1;
     if (old_carry) reg_a += 0b1000'0000;
     return 4;
 }
 
 uint8_t CPU::op_daa() {
-    flag_bcd_subtract = false;
+    flag_0100_bcd_subtract = false;
     auto lo_4 = reg_a & 0x0f;
     auto hi_4 = reg_a >> 4;
 
@@ -669,21 +715,21 @@ uint8_t CPU::op_daa() {
     }
     if (hi_4 >= 10) {
         hi_4 -= 10;
-        flag_carry = true;
+        flag_0001_carry = true;
     } else {
-        flag_carry = false;
+        flag_0001_carry = false;
     }
 
     reg_a = (hi_4 << 4) + lo_4;
-    flag_zero = (reg_a == 0);
+    flag_1000_zero = (reg_a == 0);
 
     return 4;
 }
 
 uint8_t CPU::op_scf() {
-    flag_bcd_subtract = false;
-    flag_bcd_half_carry = false;
-    flag_carry = true;
+    flag_0100_bcd_subtract = false;
+    flag_0010_bcd_half_carry = false;
+    flag_0001_carry = true;
     return 4;
 }
 
@@ -693,9 +739,59 @@ uint8_t CPU::op_cpl() {
 }
 
 uint8_t CPU::op_ccf() {
-    flag_bcd_half_carry = false;
-    flag_bcd_subtract = false;
-    flag_carry = !flag_carry;
+    flag_0010_bcd_half_carry = false;
+    flag_0100_bcd_subtract = false;
+    flag_0001_carry = !flag_0001_carry;
     return 4;
+}
+
+// FIXME: set half carry here?
+uint8_t CPU::op_ld_hl_sp_plus_s8() {
+    auto s8 = static_cast<int8_t>(read_byte_and_inc(pc));
+    auto result = sp + s8;
+
+    if (result > 0xffff) {
+        flag_0001_carry = true;
+    }
+
+    auto result_16bit = static_cast<uint16_t>(result);
+
+    reg_h = result_16bit >> 8;
+    reg_l = static_cast<uint8_t>(result_16bit);
+    return 12;
+}
+
+uint8_t CPU::op_pop(uint8_t &reg_hi, uint8_t &reg_lo) {
+    reg_lo = read_byte_and_inc(sp);
+    reg_hi = read_byte_and_inc(sp);
+    return 12;
+}
+
+uint8_t CPU::op_pop_af() {
+    reg_a = read_byte_and_inc(sp);
+    auto flags = read_byte_and_inc(sp);
+    flag_1000_zero           = (flags & 0b1000) == 0b1000;
+    flag_0100_bcd_subtract   = (flags & 0b0100) == 0b0100;
+    flag_0010_bcd_half_carry = (flags & 0b0010) == 0b0010;
+    flag_0001_carry          = (flags & 0b0001) == 0b0001;
+    return 12;
+}
+
+uint8_t CPU::op_push(uint8_t &reg_hi, uint8_t &reg_lo) {
+    write_byte_and_dec(sp, reg_hi);
+    write_byte_and_dec(sp, reg_lo);
+    return 16;
+}
+
+uint8_t CPU::op_push_af() {
+    uint8_t flags =
+            (flag_1000_zero ? 0b1000 : 0) |
+            (flag_0100_bcd_subtract ? 0b0100 : 0) |
+            (flag_0010_bcd_half_carry ? 0b0010 : 0) |
+            (flag_0001_carry ? 0b0001 : 0);
+
+    write_byte_and_dec(sp, flags);
+    write_byte_and_dec(sp, reg_a);
+    return 16;
 }
 
